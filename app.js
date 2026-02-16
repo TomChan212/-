@@ -1,7 +1,5 @@
 // --- State ---
 let nameList = [];
-let dateLocked = false;
-let lockedDateValue = '';
 let filterValue = 'all'; // 'all' | 'deficit' | 'balance'
 
 const TEMPLATE_STORAGE_KEY = '院友零用金_匯出範本';
@@ -39,6 +37,8 @@ const btnTemplateDelete = document.getElementById('btnTemplateDelete');
 const helpModal = document.getElementById('helpModal');
 const btnHelp = document.getElementById('btnHelp');
 const btnHelpClose = document.getElementById('btnHelpClose');
+const previewOutput = document.getElementById('previewOutput');
+const btnClear = document.getElementById('btnClear');
 
 /**
  * Get names currently selected in other rows (optionally exclude one input, e.g. the focused one).
@@ -84,10 +84,12 @@ function refreshDatalistForCurrentFocus() {
 /**
  * 匯入: read names from selected file (names.txt), one per line.
  */
+const importFileNameEl = document.getElementById('importFileName');
 btnImport.addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', () => {
   const file = importFile.files[0];
   if (!file) return;
+  if (importFileNameEl) importFileNameEl.textContent = file.name;
   const reader = new FileReader();
   reader.onload = (e) => {
     const text = (e.target.result || '').trim();
@@ -151,11 +153,86 @@ function buildExportText(name, date, type, amount) {
 }
 
 /**
- * 匯出至 NotePad: 所有列一併匯出至同一個 .txt 檔。
- * Order: newest first (first row = newest, then ... oldest at bottom of file).
+ * Get data rows for preview/export, respecting 結欠/結餘 filter.
  */
-function exportAllRowsToTxt() {
-  const rows = Array.from(dataBody.querySelectorAll('.data-row'));
+function getDataRowsForPreview() {
+  const rows = Array.from(dataBody.querySelectorAll('.data-row')).filter(
+    (r) => !r.classList.contains('input-row')
+  );
+  if (filterValue === 'all') return rows;
+  return rows.filter((row) => {
+    const type = row.dataset.type || 'balance';
+    return filterValue === 'deficit' ? type === 'deficit' : type === 'balance';
+  });
+}
+
+/**
+ * Build preview text: data rows only, filtered by 結欠/結餘.
+ */
+function getPreviewText() {
+  const rows = getDataRowsForPreview();
+  const blocks = rows.map((row) => {
+    const name = getRowName(row);
+    const date = getRowDate(row);
+    const type = getRowType(row);
+    const amount = getRowAmount(row);
+    return buildExportText(name, date, type, amount);
+  });
+  return blocks.join('\n\n');
+}
+
+function escapeHtml(str) {
+  if (str == null) return '';
+  const s = String(str);
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * Build preview HTML: one box per 院友 with separator line; name styled larger and colored.
+ * Filtered by 結欠/結餘.
+ */
+function getPreviewHtml() {
+  const rows = getDataRowsForPreview();
+  const parts = [];
+  for (const row of rows) {
+    const name = getRowName(row);
+    const date = getRowDate(row);
+    const type = getRowType(row);
+    const amount = getRowAmount(row);
+    const full = buildExportText(name, date, type, amount);
+    const firstLineEnd = full.indexOf('\n');
+    const firstLine = firstLineEnd >= 0 ? full.slice(0, firstLineEnd) : full;
+    let body = firstLineEnd >= 0 ? full.slice(firstLineEnd + 1) : '';
+    const amountStr = amount === '' ? '0' : amount;
+    const dollarPart = type === '結欠' ? '--$' + amountStr : '$' + amountStr;
+    let bodyHtml = escapeHtml(body);
+    const escapedDollar = escapeHtml(dollarPart);
+    const amountClass = 'preview-amount' + (type === '結欠' ? ' deficit' : '');
+    const amountSpan = '<span class="' + amountClass + '">' + escapedDollar + '</span>';
+    const re = new RegExp(escapedDollar.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    bodyHtml = bodyHtml.replace(re, amountSpan);
+    const blockClass = 'preview-block' + (type === '結欠' ? ' deficit' : '');
+    parts.push(
+      '<div class="' + blockClass + '">' +
+        '<span class="preview-name">' + escapeHtml(firstLine || name) + '</span>' +
+        '<pre class="preview-body">' + bodyHtml + '</pre>' +
+      '</div>'
+    );
+  }
+  return parts.join('');
+}
+
+/**
+ * Build export text for download: data rows only (skip input row), with name and date.
+ */
+function getExportTextForDownload() {
+  const rows = Array.from(dataBody.querySelectorAll('.data-row')).filter(
+    (r) => !r.classList.contains('input-row')
+  );
   const blocks = [];
   for (const row of rows) {
     const name = getRowName(row);
@@ -165,11 +242,26 @@ function exportAllRowsToTxt() {
     const amount = getRowAmount(row);
     blocks.push(buildExportText(name, date, type, amount));
   }
-  if (blocks.length === 0) {
+  return blocks.join('\n\n');
+}
+
+/**
+ * Update the read-only preview panel on the right.
+ */
+function updatePreview() {
+  if (previewOutput) previewOutput.innerHTML = getPreviewHtml();
+}
+
+/**
+ * 匯出至 NotePad: 所有列一併匯出至同一個 .txt 檔。
+ * Order: newest first (first row = newest, then ... oldest at bottom of file).
+ */
+function exportAllRowsToTxt() {
+  const text = getExportTextForDownload();
+  if (!text || text.trim() === '') {
     alert('請至少填寫一列院友名字與截至日期。');
     return;
   }
-  const text = blocks.join('\n\n');
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -198,6 +290,7 @@ function toggleType(btn) {
     if (row) row.dataset.type = 'deficit';
   }
   applyFilter();
+  updatePreview();
 }
 
 /**
@@ -235,10 +328,14 @@ function handleTabKey(e) {
 }
 
 /**
- * Apply 結欠/結餘 filter: show/hide rows by data-type.
+ * Apply 結欠/結餘 filter: show/hide data rows by data-type. Input row always visible.
  */
 function applyFilter() {
   dataBody.querySelectorAll('.data-row').forEach(row => {
+    if (row.classList.contains('input-row')) {
+      row.classList.remove('row-hidden');
+      return;
+    }
     const type = row.dataset.type || 'balance';
     const hide =
       filterValue === 'deficit' ? type !== 'deficit' : filterValue === 'balance' ? type !== 'balance' : false;
@@ -247,68 +344,101 @@ function applyFilter() {
 }
 
 /**
- * Create a new data row; respect date lock.
+ * Get the single input row (first row, 加入 only).
  */
-function addNewRow() {
-  const firstRow = dataBody.querySelector('.data-row');
-  const clone = firstRow.cloneNode(true);
-  clone.dataset.type = 'balance';
-  clone.querySelector('.date-input').value = dateLocked ? lockedDateValue : '';
-  clone.querySelector('.amount-input').value = '';
-  clone.querySelector('.name-input').value = '';
+function getInputRow() {
+  return dataBody.querySelector('.input-row');
+}
+
+/**
+ * Commit input row: append its data as a new data row (刪除 only), then clear the input row.
+ * On Enter or click 加入.
+ */
+function commitInputRow() {
+  const inputRow = getInputRow();
+  if (!inputRow) return;
+  const name = getRowName(inputRow);
+  const date = getRowDate(inputRow);
+  const type = getRowType(inputRow);
+  const amount = getRowAmount(inputRow);
+
+  if (!name || !name.trim()) {
+    alert('請輸入院友名字。');
+    return;
+  }
+  if (!date || !date.trim()) {
+    alert('請輸入截至日期。');
+    return;
+  }
+
+  const clone = inputRow.cloneNode(true);
+  clone.classList.remove('input-row');
+  clone.dataset.type = type === '結欠' ? 'deficit' : 'balance';
+  clone.querySelector('.name-input').value = name;
+  clone.querySelector('.date-input').value = date;
+  clone.querySelector('.amount-input').value = amount;
   const typeBtn = clone.querySelector('.btn-type');
-  typeBtn.dataset.type = 'balance';
-  typeBtn.textContent = '結餘';
-  typeBtn.classList.remove('deficit');
-  clone.querySelector('.btn-lock').addEventListener('click', onLockClick);
-  clone.querySelector('.btn-type').addEventListener('click', function () {
-    toggleType(this);
-  });
-  clone.querySelector('.btn-add').addEventListener('click', () => addNewRow());
+  typeBtn.dataset.type = type === '結欠' ? 'deficit' : 'balance';
+  typeBtn.textContent = type;
+  typeBtn.classList.toggle('deficit', type === '結欠');
+
+  const actionsTd = clone.querySelector('.td-row-actions');
+  actionsTd.innerHTML = '<button type="button" class="btn-delete" tabindex="-1">刪除</button>';
   clone.querySelector('.btn-delete').addEventListener('click', function () {
     deleteRow(this.closest('.data-row'));
   });
-  bindEnterToAddRow(clone.querySelector('.amount-input'));
+  clone.querySelector('.btn-type').addEventListener('click', function () {
+    toggleType(this);
+  });
   bindNameInput(clone.querySelector('.name-input'));
-  dataBody.insertBefore(clone, dataBody.firstChild);
+  dataBody.insertBefore(clone, inputRow.nextSibling);
+
+  inputRow.querySelector('.name-input').value = '';
+  /* keep date so next entry uses the same date */
+  inputRow.querySelector('.amount-input').value = '';
+  const inputTypeBtn = inputRow.querySelector('.btn-type');
+  inputTypeBtn.dataset.type = 'balance';
+  inputTypeBtn.textContent = '結餘';
+  inputTypeBtn.classList.remove('deficit');
+  inputRow.dataset.type = 'balance';
+
   applyFilter();
   refreshDatalistForCurrentFocus();
-  clone.querySelector('.name-input').focus();
+  inputRow.querySelector('.name-input').focus();
+  updatePreview();
 }
 
 /**
- * Remove a data row. Keep at least one row.
+ * Remove a data row. Never remove the input row.
  */
 function deleteRow(row) {
-  const rows = dataBody.querySelectorAll('.data-row');
-  if (rows.length <= 1) return;
+  if (row.classList.contains('input-row')) return;
   row.remove();
   refreshDatalistForCurrentFocus();
+  updatePreview();
 }
 
 /**
- * Lock/unlock date: when locked, new rows get this date.
+ * Clear the list: remove all data rows and reset the input row.
  */
-function onLockClick() {
-  const row = this.closest('.data-row');
-  const dateInput = row.querySelector('.date-input');
-  if (!dateLocked) {
-    lockedDateValue = dateInput.value || '';
-    if (!lockedDateValue) {
-      alert('請先選擇截至日期再鎖定。');
-      return;
-    }
-    dateLocked = true;
-    this.classList.add('locked');
-    this.title = '解除鎖定日期';
-  } else {
-    dateLocked = false;
-    lockedDateValue = '';
-    document.querySelectorAll('.btn-lock').forEach(b => b.classList.remove('locked'));
-    document.querySelectorAll('.btn-lock').forEach(b => {
-      b.title = '鎖定日期供新行使用';
-    });
+function clearList() {
+  if (!confirm('確定要清空所有記錄嗎？')) return;
+  const inputRow = getInputRow();
+  dataBody.querySelectorAll('.data-row').forEach((row) => {
+    if (!row.classList.contains('input-row')) row.remove();
+  });
+  if (inputRow) {
+    inputRow.querySelector('.name-input').value = '';
+    inputRow.querySelector('.date-input').value = '';
+    inputRow.querySelector('.amount-input').value = '';
+    const typeBtn = inputRow.querySelector('.btn-type');
+    typeBtn.dataset.type = 'balance';
+    typeBtn.textContent = '結餘';
+    typeBtn.classList.remove('deficit');
+    inputRow.dataset.type = 'balance';
   }
+  refreshDatalistForCurrentFocus();
+  updatePreview();
 }
 
 /**
@@ -323,17 +453,20 @@ function bindNameInput(input) {
 }
 
 /**
- * Press [Enter] in the amount input to add a new row.
+ * Press [Enter] in the amount input to commit the input row (append data, clear row).
  */
 function bindEnterToAddRow(amountInput) {
   if (!amountInput) return;
   amountInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      addNewRow();
+      commitInputRow();
     }
   });
 }
+
+// --- 清空 ---
+if (btnClear) btnClear.addEventListener('click', clearList);
 
 // --- Filter buttons ---
 document.querySelectorAll('.btn-filter').forEach(btn => {
@@ -342,6 +475,7 @@ document.querySelectorAll('.btn-filter').forEach(btn => {
     document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     applyFilter();
+    updatePreview();
   });
 });
 
@@ -403,6 +537,7 @@ function closeTemplateModal() {
   saveTemplateSlotsToStorage();
   templateModal.classList.remove('is-open');
   templateModal.setAttribute('aria-hidden', 'true');
+  updatePreview();
 }
 
 function saveTemplate() {
@@ -485,18 +620,24 @@ function loadTemplateSlotsFromStorage() {
 }
 loadTemplateSlotsFromStorage();
 
-// --- First row: wire events ---
+// --- Input row: wire events (加入 only; Enter commits) ---
 (function initFirstRow() {
-  const firstRow = dataBody.querySelector('.data-row');
-  firstRow.querySelector('.btn-lock').addEventListener('click', onLockClick);
-  firstRow.querySelector('.btn-type').addEventListener('click', function () {
+  const inputRow = getInputRow();
+  if (!inputRow) return;
+  inputRow.querySelector('.btn-type').addEventListener('click', function () {
     toggleType(this);
   });
-  firstRow.querySelector('.btn-add').addEventListener('click', () => addNewRow());
-  firstRow.querySelector('.btn-delete').addEventListener('click', function () {
-    deleteRow(this.closest('.data-row'));
-  });
-  bindNameInput(firstRow.querySelector('.name-input'));
-  bindEnterToAddRow(firstRow.querySelector('.amount-input'));
+  inputRow.querySelector('.btn-add').addEventListener('click', commitInputRow);
+  bindNameInput(inputRow.querySelector('.name-input'));
+  bindEnterToAddRow(inputRow.querySelector('.amount-input'));
   applyFilter();
+  updatePreview();
 })();
+
+// --- Live preview: update when user types in name, date, or amount ---
+dataBody.addEventListener('input', (e) => {
+  if (e.target.matches('.name-input, .date-input, .amount-input')) updatePreview();
+});
+dataBody.addEventListener('change', (e) => {
+  if (e.target.matches('.name-input, .date-input, .amount-input')) updatePreview();
+});

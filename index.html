@@ -7,17 +7,87 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>院友零用金 結欠/結餘</h1>
-  <div class="top-bar">
-    <button type="button" class="btn-help" id="btnHelp">說明</button>
-    <button type="button" class="btn-template" id="btnTemplate">範本</button>
-    <div class="filter-bar">
-    <span class="filter-label">篩選：</span>
-    <button type="button" class="btn-filter active" data-filter="all">全部</button>
-    <button type="button" class="btn-filter" data-filter="deficit">結欠</button>
-    <button type="button" class="btn-filter" data-filter="balance">結餘</button>
-    </div>
+  <div class="app">
+    <!-- 頂部：標題 + 工具列 -->
+    <header class="app-header">
+      <h1 class="app-title">院友零用金 結欠/結餘</h1>
+      <nav class="toolbar">
+        <div class="toolbar-group">
+          <button type="button" class="btn-help" id="btnHelp">說明</button>
+          <button type="button" class="btn-template" id="btnTemplate">範本</button>
+          <button type="button" class="btn-import" id="btnImport" title="從 names.txt 匯入院友名單">匯入院友名字</button>
+          <span class="import-file-name" id="importFileName"></span>
+          <input type="file" id="importFile" accept=".txt" />
+          <button type="button" class="btn-clear" id="btnClear" title="清空所有記錄">清空</button>
+        </div>
+        <div class="toolbar-group toolbar-group-filter">
+          <span class="filter-label">篩選</span>
+          <div class="filter-bar">
+            <button type="button" class="btn-filter active" data-filter="all">全部</button>
+            <button type="button" class="btn-filter" data-filter="deficit">結欠</button>
+            <button type="button" class="btn-filter" data-filter="balance">結餘</button>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <!-- 主內容：左表單 + 右預覽 -->
+    <main class="app-main">
+      <section class="section-table">
+        <div class="table-wrap">
+          <table>
+            <colgroup>
+              <col style="width: 28%" />
+              <col style="width: 22%" />
+              <col style="width: 28%" />
+              <col style="width: 22%" />
+            </colgroup>
+            <thead class="table-title-row">
+              <tr>
+                <th class="th-name">
+                  <span class="th-name-label">院友名字</span>
+                </th>
+                <th class="th-date">截至日期</th>
+                <th class="th-type">結欠/結餘</th>
+                <th class="th-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="dataBody" class="table-input-body">
+              <tr class="data-row input-row" data-type="balance">
+                <td class="td-name">
+                  <div class="name-input-wrap">
+                    <input type="text" class="name-input" placeholder="院友名字" list="namesDatalist" tabindex="0" autocomplete="off" />
+                  </div>
+                </td>
+                <td class="td-date">
+                  <input type="date" class="date-input" tabindex="-1" />
+                </td>
+                <td class="td-type-amount">
+                  <button type="button" class="btn-type" data-type="balance" tabindex="-1">結餘</button>
+                  <span class="amount-prefix">$</span>
+                  <input type="number" class="amount-input" min="0" step="0.01" placeholder="0" tabindex="0" />
+                </td>
+                <td class="td-row-actions">
+                  <button type="button" class="btn-add" tabindex="-1">加入</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside class="section-preview">
+        <header class="preview-header">
+          <h2 class="preview-title">預覽匯出</h2>
+          <span class="preview-hint">即時顯示匯出內容</span>
+          <button type="button" class="btn-export" id="btnExport">匯出至 NotePad</button>
+        </header>
+        <div id="previewOutput" class="preview-output"></div>
+      </aside>
+    </main>
   </div>
+
+  <!-- 說明彈窗 -->
   <div class="modal-overlay help-modal-overlay" id="helpModal" aria-hidden="true">
     <div class="modal-box help-modal-box">
       <h2 class="modal-title">📖 使用說明</h2>
@@ -40,24 +110,23 @@
           <p>每一列代表一位院友的一筆記錄。請依序填寫：</p>
           <ul>
             <li><strong>院友名字</strong> 👤：點一下空格，可從下拉選單選名字，或直接打字。已選過的名字在別的列不會再出現，避免重複。</li>
-            <li><strong>截至日期</strong> 📅：點日期欄位，選一個日期。</li>
-            <li><strong>🔒 鎖定</strong>：若您希望「之後新增的列」都自動用同一個日期，可先選好日期，再按一下鎖定按鈕。要取消鎖定就再按一次。</li>
+            <li><strong>截至日期</strong> 📅：點日期欄位，選一個日期。新列的日期會預設與第一列相同，有需要可手動修改。</li>
             <li><strong>結欠 / 結餘</strong> 💰：按一下可切換「結餘」或「結欠」。</li>
             <li><strong>金額</strong> 💵：在 $ 後面輸入數字（例如 100）。</li>
           </ul>
         </section>
         <section>
-          <h3>➕ 新增一列（加一筆記錄）</h3>
-          <p>有兩種方式：</p>
+          <h3>➕ 加入一筆記錄</h3>
+          <p>最上面<strong>第一列是輸入列</strong>，只有<strong>【加入】</strong>按鈕。填好院友名字、日期、結欠/結餘、金額後：</p>
           <ul>
-            <li>按該列最右邊的<strong>【+】</strong>按鈕。</li>
-            <li>或在「金額」欄位輸入完後，直接按鍵盤的<strong> Enter</strong>。</li>
+            <li>按<strong>【加入】</strong>按鈕，或</li>
+            <li>在「金額」欄位按鍵盤<strong> Enter</strong>。</li>
           </ul>
-          <p>新列會出現在<strong>最上面</strong>，游標會自動跳到新列的「院友名字」讓您繼續填。👍</p>
+          <p>該筆資料會加到<strong>下面一列</strong>，輸入列會清空，游標留在「院友名字」讓您繼續輸入。👍</p>
         </section>
         <section>
           <h3>🗑️ 刪除一列</h3>
-          <p>若某列填錯或不需要，按該列右邊的<strong>【刪除】</strong>按鈕即可。系統會保留至少一列，不會全部刪光。</p>
+          <p>已加入的列（下面有資料的列）右邊有<strong>【刪除】</strong>按鈕，按一下即可刪除該列。最上面第一列是輸入列，沒有刪除按鈕。</p>
         </section>
         <section>
           <h3>🔍 篩選：只看結欠或結餘</h3>
@@ -85,7 +154,7 @@
         </section>
         <section>
           <h3>📤 匯出至 NotePad（產生文字檔）</h3>
-          <p>填好資料後，按表頭右邊的<strong>【匯出至 NotePad】</strong>：</p>
+          <p>填好資料後，按右邊預覽區的<strong>【匯出至 NotePad】</strong>：</p>
           <ul>
             <li>系統會把<strong>所有有填名字和日期的列</strong>合併成一個文字檔。</li>
             <li>檔案會依「最新在上、較舊在下」排列。</li>
@@ -106,13 +175,15 @@
       </div>
     </div>
   </div>
+
+  <!-- 範本彈窗 -->
   <div class="modal-overlay" id="templateModal" aria-hidden="true">
     <div class="modal-box">
       <h2 class="modal-title">匯出範本</h2>
       <p class="modal-hint">可用變數：<code>{name}</code> 院友名字、<code>{date}</code> 截至日期、<code>{typeLabel}</code> 結欠/結餘、<code>{dollarPart}</code> 金額（如 $100 或 --$100）</p>
       <textarea id="templateTextarea" class="template-textarea" rows="12"></textarea>
       <div class="template-slots-row">
-        <span class="template-slots-label">範本：</span>
+        <span class="template-slots-label">範本</span>
         <div class="template-slot-buttons" id="templateSlotButtons"></div>
         <button type="button" class="btn-slot-add" id="btnSlotAdd" title="新增範本">+</button>
       </div>
@@ -123,44 +194,8 @@
       </div>
     </div>
   </div>
-  <table>
-    <thead>
-      <tr>
-        <th class="th-names-row">
-          <span>院友名字</span>
-          <button type="button" class="btn-import" id="btnImport" title="從 names.txt 匯入院友名單">匯入</button>
-          <input type="file" id="importFile" accept=".txt" />
-        </th>
-        <th>截至日期</th>
-        <th>結欠/結餘</th>
-        <th>
-          <button type="button" class="btn-export" id="btnExport">匯出至 NotePad</button>
-        </th>
-      </tr>
-    </thead>
-    <tbody id="dataBody">
-      <tr class="data-row" data-type="balance">
-        <td>
-          <input type="text" class="name-input" placeholder="院友名字" list="namesDatalist" tabindex="0" />
-        </td>
-        <td>
-          <input type="date" class="date-input" tabindex="-1" />
-          <button type="button" class="btn-lock" title="鎖定日期供新行使用" tabindex="-1">🔒</button>
-        </td>
-        <td>
-          <button type="button" class="btn-type" data-type="balance" tabindex="-1">結餘</button>
-          <span class="amount-prefix">$</span>
-          <input type="number" class="amount-input" min="0" step="0.01" placeholder="0" tabindex="0" />
-        </td>
-        <td>
-          <button type="button" class="btn-add" tabindex="-1">+</button>
-          <button type="button" class="btn-delete" tabindex="-1">刪除</button>
-        </td>
-      </tr>
-    </tbody>
-  </table>
-  <datalist id="namesDatalist"></datalist>
 
+  <datalist id="namesDatalist"></datalist>
   <script src="app.js"></script>
 </body>
 </html>
