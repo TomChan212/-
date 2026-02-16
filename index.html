@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>院友零用金 - 結欠/結餘</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>院友零用金 結欠/結餘</h1>
+  <div class="top-bar">
+    <button type="button" class="btn-help" id="btnHelp">說明</button>
+    <button type="button" class="btn-template" id="btnTemplate">範本</button>
+    <div class="filter-bar">
+    <span class="filter-label">篩選：</span>
+    <button type="button" class="btn-filter active" data-filter="all">全部</button>
+    <button type="button" class="btn-filter" data-filter="deficit">結欠</button>
+    <button type="button" class="btn-filter" data-filter="balance">結餘</button>
+    </div>
+  </div>
+  <div class="modal-overlay help-modal-overlay" id="helpModal" aria-hidden="true">
+    <div class="modal-box help-modal-box">
+      <h2 class="modal-title">📖 使用說明</h2>
+      <div class="help-content">
+        <section>
+          <h3>👋 歡迎使用院友零用金系統</h3>
+          <p>這個網頁用來記錄院友的零用金結欠或結餘，並可匯出成文字檔，方便列印或傳送。以下一步一步教您如何使用。</p>
+        </section>
+        <section>
+          <h3>📥 第一步：匯入院友名單（匯入）</h3>
+          <p>在表格最上方「院友名字」右邊有一個藍色按鈕叫<strong>【匯入】</strong>。</p>
+          <ul>
+            <li>請先準備好一個文字檔，檔名為 <code>names.txt</code>，裡面每行寫一個院友名字。</li>
+            <li>按一下【匯入】→ 會請您選擇檔案 → 選取 <code>names.txt</code>。</li>
+            <li>成功後，之後在「院友名字」欄位輸入時，就會出現下拉選單，方便選名字，不用每次手打。✅</li>
+          </ul>
+        </section>
+        <section>
+          <h3>✏️ 第二步：填寫每一列資料</h3>
+          <p>每一列代表一位院友的一筆記錄。請依序填寫：</p>
+          <ul>
+            <li><strong>院友名字</strong> 👤：點一下空格，可從下拉選單選名字，或直接打字。已選過的名字在別的列不會再出現，避免重複。</li>
+            <li><strong>截至日期</strong> 📅：點日期欄位，選一個日期。</li>
+            <li><strong>🔒 鎖定</strong>：若您希望「之後新增的列」都自動用同一個日期，可先選好日期，再按一下鎖定按鈕。要取消鎖定就再按一次。</li>
+            <li><strong>結欠 / 結餘</strong> 💰：按一下可切換「結餘」或「結欠」。</li>
+            <li><strong>金額</strong> 💵：在 $ 後面輸入數字（例如 100）。</li>
+          </ul>
+        </section>
+        <section>
+          <h3>➕ 新增一列（加一筆記錄）</h3>
+          <p>有兩種方式：</p>
+          <ul>
+            <li>按該列最右邊的<strong>【+】</strong>按鈕。</li>
+            <li>或在「金額」欄位輸入完後，直接按鍵盤的<strong> Enter</strong>。</li>
+          </ul>
+          <p>新列會出現在<strong>最上面</strong>，游標會自動跳到新列的「院友名字」讓您繼續填。👍</p>
+        </section>
+        <section>
+          <h3>🗑️ 刪除一列</h3>
+          <p>若某列填錯或不需要，按該列右邊的<strong>【刪除】</strong>按鈕即可。系統會保留至少一列，不會全部刪光。</p>
+        </section>
+        <section>
+          <h3>🔍 篩選：只看結欠或結餘</h3>
+          <p>頁面頂部有「篩選」：</p>
+          <ul>
+            <li><strong>全部</strong>：顯示所有列。</li>
+            <li><strong>結欠</strong>：只顯示結欠的記錄。</li>
+            <li><strong>結餘</strong>：只顯示結餘的記錄。</li>
+          </ul>
+          <p>方便您快速查看某一類記錄。👀</p>
+        </section>
+        <section>
+          <h3>⌨️ 鍵盤 Tab 鍵</h3>
+          <p>在「院友名字」或「金額」欄位時，按<strong> Tab</strong> 鍵會在下一個「名字」或「金額」之間跳動，不會跳到日期或按鈕，方便連續輸入。↔️</p>
+        </section>
+        <section>
+          <h3>📄 範本（可選）</h3>
+          <p>按頂部的<strong>【範本】</strong>可開啟「匯出範本」視窗：</p>
+          <ul>
+            <li>匯出成文字檔時，會依照範本裡的格式來寫內容。</li>
+            <li>您可修改範本文字；可用變數：<code>{name}</code>、<code>{date}</code>、<code>{typeLabel}</code>、<code>{dollarPart}</code>。</li>
+            <li>下方有 1、2、3、4 和【+】，可儲存多個範本；<strong>藍色</strong>的那個就是匯出時會用的。</li>
+            <li>按【儲存】會儲存目前範本；按【刪除】可刪除目前選中的範本（至少保留一個）。</li>
+          </ul>
+        </section>
+        <section>
+          <h3>📤 匯出至 NotePad（產生文字檔）</h3>
+          <p>填好資料後，按表頭右邊的<strong>【匯出至 NotePad】</strong>：</p>
+          <ul>
+            <li>系統會把<strong>所有有填名字和日期的列</strong>合併成一個文字檔。</li>
+            <li>檔案會依「最新在上、較舊在下」排列。</li>
+            <li>結欠的金額會顯示成「--$數字」。</li>
+            <li>下載的檔案可直接用記事本（NotePad）或其他文字軟體開啟、列印或傳送。📩</li>
+          </ul>
+        </section>
+        <section>
+          <h3>💡 小提示</h3>
+          <ul>
+            <li>資料會依您選的「範本」格式匯出；記得在範本視窗裡選好要用的範本（藍色）。</li>
+            <li>如有任何問題，可隨時再按【說明】重看這頁。祝您使用順利！🙏</li>
+          </ul>
+        </section>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-cancel" id="btnHelpClose">關閉</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="templateModal" aria-hidden="true">
+    <div class="modal-box">
+      <h2 class="modal-title">匯出範本</h2>
+      <p class="modal-hint">可用變數：<code>{name}</code> 院友名字、<code>{date}</code> 截至日期、<code>{typeLabel}</code> 結欠/結餘、<code>{dollarPart}</code> 金額（如 $100 或 --$100）</p>
+      <textarea id="templateTextarea" class="template-textarea" rows="12"></textarea>
+      <div class="template-slots-row">
+        <span class="template-slots-label">範本：</span>
+        <div class="template-slot-buttons" id="templateSlotButtons"></div>
+        <button type="button" class="btn-slot-add" id="btnSlotAdd" title="新增範本">+</button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-save" id="btnTemplateSave">儲存</button>
+        <button type="button" class="btn-modal-delete" id="btnTemplateDelete">刪除</button>
+        <button type="button" class="btn-modal-cancel" id="btnTemplateCancel">取消</button>
+      </div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th class="th-names-row">
+          <span>院友名字</span>
+          <button type="button" class="btn-import" id="btnImport" title="從 names.txt 匯入院友名單">匯入</button>
+          <input type="file" id="importFile" accept=".txt" />
+        </th>
+        <th>截至日期</th>
+        <th>結欠/結餘</th>
+        <th>
+          <button type="button" class="btn-export" id="btnExport">匯出至 NotePad</button>
+        </th>
+      </tr>
+    </thead>
+    <tbody id="dataBody">
+      <tr class="data-row" data-type="balance">
+        <td>
+          <input type="text" class="name-input" placeholder="院友名字" list="namesDatalist" tabindex="0" />
+        </td>
+        <td>
+          <input type="date" class="date-input" tabindex="-1" />
+          <button type="button" class="btn-lock" title="鎖定日期供新行使用" tabindex="-1">🔒</button>
+        </td>
+        <td>
+          <button type="button" class="btn-type" data-type="balance" tabindex="-1">結餘</button>
+          <span class="amount-prefix">$</span>
+          <input type="number" class="amount-input" min="0" step="0.01" placeholder="0" tabindex="0" />
+        </td>
+        <td>
+          <button type="button" class="btn-add" tabindex="-1">+</button>
+          <button type="button" class="btn-delete" tabindex="-1">刪除</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <datalist id="namesDatalist"></datalist>
+
+  <script src="app.js"></script>
+</body>
+</html>
